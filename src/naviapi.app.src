@@ -1,0 +1,25 @@
+%%-*- mode: erlang -*-
+{application, naviapi, [
+    {description, "API application library for NaviCC project"},
+    {vsn, "0.0.1"},
+    {id, "git"},
+    {modules, []},
+    {registered, [naviapi_sup]},
+    {applications, [
+                    kernel,
+                    stdlib,
+                    cowboy,
+                    oauth2,
+                    navidb,
+                    lager
+    ]},
+    {mod, {naviapi_app, []}},
+    {env, [
+        {http_listen_port, 8982},
+        {origin, <<"*">>},
+        {acceptors, 20}
+    ]},
+    {start_phases, [
+        {listen, []}
+    ]}
+]}.

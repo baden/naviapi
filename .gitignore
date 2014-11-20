@@ -8,3 +8,9 @@ ebin
 rel/example_project
 .concrete/DEV_MODE
 .rebar
+log/
+logs/
+test/*.beam
+test/Mnesia*
+Mnesia*
+.erlang.mk.packages.*

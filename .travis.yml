@@ -1,0 +1,12 @@
+language: erlang
+otp_release:
+  - 17.3
+script: "sleep 4 && make tests"
+branches:
+  only:
+    - master
+notifications:
+  email:
+    - baden.i.ua@gmail.com
+services:
+  - mongodb

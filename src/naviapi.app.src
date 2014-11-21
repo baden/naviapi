@@ -15,9 +15,6 @@
     ]},
     {mod, {naviapi_app, []}},
     {env, [
-        {http_listen_port, 8982},
-        {origin, <<"*">>},
-        {acceptors, 20}
     ]},
     {start_phases, [
         {listen, []}

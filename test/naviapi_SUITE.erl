@@ -19,15 +19,17 @@ groups() ->
         {auth, [parallel], [test3]}
     ].
 
--define(API_PORT, 8982).
+% -define(API_PORT, 8982).
+-define(HOST, "localhost").
+% -define(PORT, ?config(port, Config)).
 
 init_per_suite(Config) ->
     error_logger:tty(false),
 
     {ok, Modules} = application:ensure_all_started(naviapi),
     {ok, GunModules} = application:ensure_all_started(gun),
-
-    [{modules, Modules ++ GunModules} | Config].
+    {ok, Port} = application:get_env(naviapi, port),
+    [{modules, Modules ++ GunModules}, {host, ?HOST}, {port, Port} | Config].
 
 end_per_suite(Config) ->
     Modules = ?config(modules, Config),
@@ -47,9 +49,11 @@ init_per_group(noauth, Config) ->
     Config;
 
 init_per_group(auth, Config) ->
+    Host = ?config(host, Config),
+    Port = ?config(port, Config),
     % TODO: Authorize here?
     Username = <<"baden">>,
-    {200, Headers, Body} = apipost("/1.0/auth", #{
+    {200, Headers, Body} = helper:post(Host, Port, "/1.0/auth", #{
                                                     grant_type => <<"password">>,
                                                     username   => Username,
                                                     password   => <<"111">>
@@ -59,7 +63,6 @@ init_per_group(auth, Config) ->
     ?assertEqual(<<"application/json; charset=utf-8">>, Content_Type),
 
     #{<<"access_token">> := Access_Token} = Body,
-    % ct:pal("Access_Token = ~p", [Access_Token]),
 
     [{token, Access_Token}, {username, Username} | Config].
 
@@ -69,15 +72,19 @@ end_per_group(noauth, Config) ->
 end_per_group(auth, Config) ->
     Config.
 
-test1(_Config) ->
+test1(Config) ->
+    Host = ?config(host, Config),
+    Port = ?config(port, Config),
     % Out of REST API
-    {200, _, _} = apiget("/1.0/info"),
+    {200, _, _} = helper:get(Host, Port, "/1.0/info"),
     ok.
 
-test2(_Config) ->
+test2(Config) ->
+    Host = ?config(host, Config),
+    Port = ?config(port, Config),
     Username = <<"baden">>,
-    {401, _, _} = apiget("/1.0/account"),  % Not authorize jet
-    {200, Headers, Body} = apipost("/1.0/auth", #{
+    {401, _, _} = helper:get(Host, Port, "/1.0/account"),  % Not authorize jet
+    {200, Headers, Body} = helper:post(Host, Port, "/1.0/auth", #{
                                                     grant_type => <<"password">>,
                                                     username   => Username,
                                                     password   => <<"111">>
@@ -97,103 +104,35 @@ test2(_Config) ->
 
     ?assertEqual(CookieToken, Access_Token),
 
-    {200, _, AccountBody} = apiget("/1.0/account", [{<<"authorization">>, <<"Bearer ", Access_Token/binary>>}]),
+    {200, _, AccountBody} = helper:get(Host, Port, "/1.0/account", [{<<"authorization">>, <<"Bearer ", Access_Token/binary>>}]),
     ?assertMatch(#{<<"username">> := Username}, AccountBody),
     % TODO: Test cookies authorization
     ok.
 
 
 test3(Config) ->
+    Host = ?config(host, Config),
+    Port = ?config(port, Config),
     Username = ?config(username, Config),
     Token = ?config(token, Config),
 
     % GET before
-    ?assertMatch({200, _, #{<<"username">> := Username}}, apiget("/1.0/account", {token, Token})),
+    ?assertMatch(
+        {200, _, #{<<"username">> := Username}},
+        helper:get(Host, Port, "/1.0/account", {token, Token})
+    ),
 
-    RandomValue = random_string(),
+    RandomValue = helper:random_string(),
     % PATCH
-    {200, _, RespBody} = apipatch("/1.0/account", {token, Token}, #{<<"foo">> => RandomValue}),
+    {200, _, RespBody} = helper:patch(Host, Port, "/1.0/account", {token, Token}, #{<<"foo">> => RandomValue}),
     ct:pal("RespBody = ~p", [RespBody]),
 
     % GET after
     ?assertMatch(
         {200, _, #{<<"username">> := Username, <<"foo">> := RandomValue}},
-        apiget("/1.0/account", {token, Token})
+        helper:get(Host, Port, "/1.0/account", {token, Token})
     ),
 
     ok.
 
 % Private
-
-apiget(Url) ->
-    apiget(Url, []).
-
-apiget(Url, Headers) ->
-    {ok, ConnPid} = gun:open("localhost", ?API_PORT, [{retry, 0}, {type, tcp}]),
-    Ref = gun:get(ConnPid, Url, header(Headers)),
-    Response = case gun:await(ConnPid, Ref) of
-        {response, nofin, Status, RespHeaders} ->
-            {ok, Body} = gun:await_body(ConnPid, Ref),
-            case proplists:get_value(<<"content-type">>, RespHeaders, undefined) of
-                <<"application/json; charset=utf-8">> ->
-                    {Status, RespHeaders, jsxn:decode(Body)};
-                _ ->
-                    {Status, RespHeaders, Body}
-            end;
-        {response, fin, Status, RespHeaders} ->
-            {Status, RespHeaders, <<"">>}
-    end,
-    gun:close(ConnPid),
-    Response.
-
-apipost(Url, Payload) ->
-    apipost(Url, [], Payload).
-
-apipost(Url, Headers, Payload) ->
-    {ok, ConnPid} = gun:open("localhost", ?API_PORT, [{retry, 0}, {type, tcp}]),
-    PostHeaders = [{<<"content-type">>, <<"application/json; charset=utf-8">>} | header(Headers)],
-    Data = jsxn:encode(Payload),
-    Ref = gun:post(ConnPid, Url, PostHeaders, Data),
-    Response = case gun:await(ConnPid, Ref) of
-        {response, nofin, Status, RespHeaders} ->
-            {ok, Body} = gun:await_body(ConnPid, Ref),
-            case proplists:get_value(<<"content-type">>, RespHeaders, undefined) of
-                <<"application/json; charset=utf-8">> ->
-                    {Status, RespHeaders, jsxn:decode(Body)};
-                _ ->
-                    {Status, RespHeaders, Body}
-            end;
-        {response, fin, Status, RespHeaders} ->
-            {Status, RespHeaders, <<"">>}
-    end,
-    gun:close(ConnPid),
-    Response.
-
-apipatch(Url, Headers, Payload) ->
-    {ok, ConnPid} = gun:open("localhost", ?API_PORT, [{retry, 0}, {type, tcp}]),
-    PostHeaders = [{<<"content-type">>, <<"application/json; charset=utf-8">>} | header(Headers)],
-    Data = jsxn:encode(Payload),
-    Ref = gun:patch(ConnPid, Url, PostHeaders, Data),
-    Response = case gun:await(ConnPid, Ref) of
-        {response, nofin, Status, RespHeaders} ->
-            {ok, Body} = gun:await_body(ConnPid, Ref),
-            case proplists:get_value(<<"content-type">>, RespHeaders, undefined) of
-                <<"application/json; charset=utf-8">> ->
-                    {Status, RespHeaders, jsxn:decode(Body)};
-                _ ->
-                    {Status, RespHeaders, Body}
-            end;
-        {response, fin, Status, RespHeaders} ->
-            {Status, RespHeaders, <<"">>}
-    end,
-    gun:close(ConnPid),
-    Response.
-
-header({token, Token}) ->
-    [{<<"authorization">>, <<"Bearer ", Token/binary>>}];
-
-header(Any) ->
-    Any.
-
-random_string() ->
-    base64:encode(crypto:rand_bytes(16)).

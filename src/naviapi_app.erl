@@ -58,7 +58,7 @@ start_phase(listen, _Type, _Args) ->
     ],
 
     cowboy:start_http(?APP, config(acceptors, 100),
-                      [{port, config(http_listen_port)}],
+                      [{port, config(port)}],
                       [{env,
                         [{dispatch, cowboy_router:compile(Dispatch)}]}]),
     ok.

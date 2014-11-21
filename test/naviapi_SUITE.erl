@@ -38,7 +38,7 @@ end_per_suite(Config) ->
 % end_per_group(auth, Config) ->
 %     Config.
 
-init_per_testcase(Case, Config) ->
+init_per_testcase(_Case, Config) ->
     GropProps = ?config(tc_group_properties, Config),
     case ?config(name, GropProps) of
         auth -> helper:auth(Config);
@@ -61,27 +61,28 @@ register(Config) ->
     Title = helper:random_string(),
     Username = helper:random_string(),
     Password = helper:random_string(),
+    Email    = helper:random_string(),
     Groupname = helper:random_string(),
     Grouppassword = helper:random_string(),
 
     % Pure user
     {200, _, _} = helper:post(Config, "/register", #{
         grant_type => <<"password">>,
-        title      => Title,
+        % title      => Title,  % Должен установиться равным Username
         username   => Username,
-        password   => Password
+        password   => Password,
+        email      => Email
     }),
     Account = navidb:get(accounts, #{username => Username}),
-    ct:pal("Account = ~p", [Account]),
     ?assertMatch(
         #{
             date     := _,
-            email    := <<>>,
+            email    := Email,
             groups   := [],
             id       := _,
             password := Password,
             skeys    := [],
-            title    := Title,
+            title    := Username,
             username := Username
         },
         Account
@@ -89,7 +90,7 @@ register(Config) ->
     navidb:remove(accounts, #{username => Username}),
 
     % With unexisting group
-    Result1 = {404, _, _} = helper:post(Config, "/register", #{
+    {404, _, _} = helper:post(Config, "/register", #{
         grant_type => <<"password">>,
         title      => Title,
         username   => Username,
@@ -99,16 +100,110 @@ register(Config) ->
         newgroup   => false
     }),
 
-    ct:pal("Result1 = ~p", [Result1]),
+    % Create group
+    {200, _, _} = helper:post(Config, "/register", #{
+        grant_type => <<"password">>,
+        title      => Title,
+        username   => Username,
+        password   => Password,
+        groupname  => Groupname,
+        grouppassword  => Grouppassword,
+        newgroup   => true
+    }),
+
+    Username2 = helper:random_string(),
+
+    % Попытка создать группу, которая уже существует
+    % {409, _, #{<<"errors">> := [Error1]}} = helper:post(Config, "/register", #{
+    %     grant_type => <<"password">>,
+    %     title      => Title,
+    %     username   => Username2,
+    %     password   => Password,
+    %     groupname  => Groupname,
+    %     grouppassword  => Grouppassword,
+    %     newgroup   => true
+    % }),
+    % #{<<"resource">> := <<"Group">>, <<"code">>     := <<"exist">>} = Error1,
+    ?assertMatch(
+        {409, _, #{
+            <<"errors">> := [#{
+                <<"resource">> := <<"Group">>,
+                <<"code">>     := <<"exist">>
+            }]}
+        },
+        helper:post(Config, "/register", #{
+            grant_type => <<"password">>,
+            title      => Title,
+            username   => Username2,
+            password   => Password,
+            groupname  => Groupname,
+            grouppassword  => Grouppassword,
+            newgroup   => true
+        })
+    ),
+
+    % Попытка присоединиться к группе, не зная проверочного слова
+    ?assertMatch(
+        {409, _, #{
+            <<"errors">> := [#{
+                <<"resource">> := <<"Group">>,
+                <<"code">>     := <<"wrongpassword">>
+            }]}
+        },
+        helper:post(Config, "/register", #{
+            grant_type => <<"password">>,
+            title      => Title,
+            username   => Username2,
+            password   => Password,
+            groupname  => Groupname,
+            grouppassword  => helper:random_string(),
+            newgroup   => false
+        })
+    ),
+
+    % А вот теперь должно получиться
+    {200, _, _} = helper:post(Config, "/register", #{
+        grant_type => <<"password">>,
+        title      => Title,
+        username   => Username2,
+        password   => Password,
+        groupname  => Groupname,
+        grouppassword  => Grouppassword,
+        newgroup   => false
+    }),
+
+    % Попытка повторно создать пользователя
+    ?assertMatch(
+        {409, _, #{
+            <<"errors">> := [#{
+                <<"resource">> := <<"GroupMember">>,
+                <<"code">>     := <<"exist">>
+            }]}
+        },
+        helper:post(Config, "/register", #{
+            grant_type => <<"password">>,
+            title      => Title,
+            username   => Username2,
+            password   => Password,
+            groupname  => Groupname,
+            grouppassword  => Grouppassword,
+            newgroup   => false
+        })
+    ),
+
+    ?assertMatch(
+        #{
+            members := [Username, Username2]
+        },
+        navidb:get(groups, {groupname, Groupname})
+    ),
 
     ok.
 
 account(Config) ->
     Username = ?config(username, Config),
-    ct:pal("Username = ~p", [Username]),
     {200, _, AccountBody} = helper:get(Config, "/account"),
     ?assertMatch(#{<<"username">> := Username}, AccountBody),
-    ct:pal("AccountBody = ~p", [AccountBody]),
 
     {200, LogoutHeaders, _} = helper:get(Config, "/logout"),
     Cookie = proplists:get_value(<<"set-cookie">>, LogoutHeaders),
@@ -118,8 +213,6 @@ account(Config) ->
 
 account2(Config) ->
     Username = ?config(username, Config),
-    ct:pal("Username = ~p", [Username]),
-    % Token = ?config(token, Config),
 
     % GET before
     ?assertMatch(
@@ -129,8 +222,7 @@ account2(Config) ->
 
     RandomValue = helper:random_string(),
     % PATCH
-    {200, _, RespBody} = helper:patch(Config, "/account", #{<<"foo">> => RandomValue}),
-    ct:pal("RespBody = ~p", [RespBody]),
+    {200, _, _} = helper:patch(Config, "/account", #{<<"foo">> => RandomValue}),
 
     % GET after
     ?assertMatch(
@@ -142,7 +234,6 @@ account2(Config) ->
 password(Config) ->
     Username = ?config(username, Config),
     Password = ?config(password, Config),
-    ct:pal("Username = ~p", [Username]),
     ?assertMatch(
         {200, _, #{<<"username">> := Username}},
         helper:get(Config, "/account")
@@ -166,7 +257,6 @@ password(Config) ->
         },
         RespBody1
     ),
-    % ct:pal("Response1 = ~p", [Response1]),
 
     % Теперь введем его правильно
     Payload2 = #{

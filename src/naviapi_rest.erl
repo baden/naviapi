@@ -63,6 +63,9 @@ upgrade(Req, Env, Handler, HandlerState, infinity, run) ->
 
     Opts = #{},
 
+    % <<"Bearer ", Token/binary>> = maps:get(<<"authorization">>, Headers, <<"Bearer  ">>),
+    % io:format("~p@~p[~p]:~p~n", [Method, Handler, Token, maps:merge(Params, Query)]),
+
     cowboy_rest:upgrade(Req1, Env, ?MODULE, #state{
         username = undefined,
         method = Method,

@@ -9,14 +9,19 @@ suite() ->
     [{timetrap,{minutes,1}}].
 
 all() -> [
-    {group, noauth},
-    {group, auth}
+    {group, noauth}
+    % , {group, auth}
 ].
 
 groups() ->
     [
-        {noauth, [parallel], [info, register]},
-        {auth, [parallel], [account, account2, password]}
+        {noauth, [parallel, shuffle, {repeat, 100}], [info, register]},
+        % {noauth, [parallel], [info, register]},
+        % Нужно как-то понять, почему не работает parallel
+        % {auth, [parallel, {repeat, 10}], [account, account2, password, account_systems, geos]}
+        {auth, [parallel, shuffle, {repeat, 10}], [account, account2, password, account_systems, geos]}
+
+        % {auth, [{repeat, 10}], [account, account2, password, account_systems, geos]}
     ].
 
 init_per_suite(Config) ->
@@ -198,6 +203,10 @@ register(Config) ->
         navidb:get(groups, {groupname, Groupname})
     ),
 
+    navidb:remove(accounts, {username, Username}),
+    navidb:remove(accounts, {username, Username2}),
+    navidb:remove(groups, {groupname, Groupname}),
+
     ok.
 
 account(Config) ->
@@ -264,4 +273,52 @@ password(Config) ->
         password     => NewPassword
     },
     {200, _, _} = helper:put(Config, "/account", Payload2),
+    ok.
+
+account_systems(Config) ->
+    % Username = ?config(username, Config),
+    ?assertMatch(
+        {200, _, #{<<"skeys">> := []}},
+        helper:get(Config, "/account")
+    ),
+
+    % Попробуем добавить несуществующий трекер
+    Imei1 = helper:random_string(),
+
+    ?assertMatch(
+        {200, _, [#{
+            <<"result">> := <<"notfound">>,
+            <<"system">> := null
+        }]},
+        helper:post(Config, "/account/systems", #{<<"cmd">> => <<"add">>, imeis => [Imei1]})
+    ),
+
+    Skey = base64:encode(Imei1),
+    #{title := Title1, date := Date1} = navidb:get(system, Skey, cached), % Это создаст систему
+    % ct:pal("System1 = ~p", [System1]),
+
+    % В этот раз должно быть все хорошо
+    {200, _, [#{<<"result">> := <<"added">>, <<"system">> := System2}]} =
+        helper:post(Config, "/account/systems", #{<<"cmd">> => <<"add">>, imeis => [Imei1]}),
+    % ct:pal("System2 = ~p", [System2]),
+    % Проверим парочку полей
+    ?assertMatch(
+        #{<<"id">> := Skey, <<"imei">> := Imei1, <<"title">> := Title1, <<"date">> := Date1},
+        System2
+    ),
+    % Попробуем повторно добавить трекер
+    ?assertMatch(
+        {200, _, [#{
+            <<"result">> := <<"already">>,
+            <<"system">> := null
+        }]},
+        helper:post(Config, "/account/systems", #{<<"cmd">> => <<"add">>, imeis => [Imei1]})
+    ),
+    % Удалим трекер
+    {204, _, _} = helper:delete(Config, "/account/systems/" ++ binary_to_list(Skey)),
+    navidb:remove(systems, {id, Skey}),
+    ok.
+
+geos(_Config) ->
+
     ok.

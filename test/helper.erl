@@ -2,7 +2,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([start/1, stop/1, auth/1, clean/1, get/2, post/3, patch/3, put/3, random_string/0]).
+-export([start/1, stop/1, auth/1, clean/1, get/2, post/3, patch/3, put/3, delete/2, random_string/0]).
 
 -define(API_VERSION, "1.0").
 
@@ -148,6 +148,26 @@ put(Config, Url, Payload) ->
     gun:close(ConnPid),
     Response.
 
+delete(Config, Url) ->
+    Host = ?config(host, Config),
+    Port = ?config(port, Config),
+    {ok, ConnPid} = gun:open(Host, Port, [{retry, 0}, {type, tcp}]),
+    Ref = gun:delete(ConnPid, "/" ++ ?API_VERSION ++ Url, header(Config)),
+    Response = case gun:await(ConnPid, Ref) of
+        {response, nofin, Status, RespHeaders} ->
+            {ok, Body} = gun:await_body(ConnPid, Ref),
+            case proplists:get_value(<<"content-type">>, RespHeaders, undefined) of
+                <<"application/json; charset=utf-8">> ->
+                    {Status, RespHeaders, jsxn:decode(Body)};
+                _ ->
+                    {Status, RespHeaders, Body}
+            end;
+        {response, fin, Status, RespHeaders} ->
+            {Status, RespHeaders, <<"">>}
+    end,
+    gun:close(ConnPid),
+    Response.
+
 header(Config) ->
     case proplists:get_value(token, Config) of
         undefined -> [];
@@ -155,4 +175,4 @@ header(Config) ->
     end.
 
 random_string() ->
-    base64:encode(crypto:rand_bytes(16)).
+    base64:encode(crypto:rand_bytes(32)).

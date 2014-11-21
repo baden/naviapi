@@ -15,124 +15,163 @@ all() -> [
 
 groups() ->
     [
-        {noauth, [parallel], [test1, test2]},
-        {auth, [parallel], [test3]}
+        {noauth, [parallel], [info, register]},
+        {auth, [parallel], [account, account2, password]}
     ].
 
-% -define(API_PORT, 8982).
--define(HOST, "localhost").
-% -define(PORT, ?config(port, Config)).
-
 init_per_suite(Config) ->
-    error_logger:tty(false),
-
-    {ok, Modules} = application:ensure_all_started(naviapi),
-    {ok, GunModules} = application:ensure_all_started(gun),
-    {ok, Port} = application:get_env(naviapi, port),
-    [{modules, Modules ++ GunModules}, {host, ?HOST}, {port, Port} | Config].
+    helper:start(Config).
 
 end_per_suite(Config) ->
-    Modules = ?config(modules, Config),
-    [application:stop(Module) || Module <- lists:reverse(Modules)],
-    application:unload(lager), application:unload(navidb), application:unload(naviapi),
-    error_logger:tty(true),
-    ok.
+    helper:stop(Config).
 
-% init_per_testcase(_Case, Config) ->
-%     % TODO: Authorize here?
+% init_per_group(noauth, Config) ->
+%     Config;
+%
+% init_per_group(auth, Config) ->
+%     % helper:auth(Config).
 %     Config.
 %
-% end_per_testcase(_Case, Config) ->
+% end_per_group(noauth, Config) ->
+%     Config;
+%
+% end_per_group(auth, Config) ->
 %     Config.
 
-init_per_group(noauth, Config) ->
-    Config;
+init_per_testcase(Case, Config) ->
+    GropProps = ?config(tc_group_properties, Config),
+    case ?config(name, GropProps) of
+        auth -> helper:auth(Config);
+        _ -> Config
+    end.
 
-init_per_group(auth, Config) ->
-    Host = ?config(host, Config),
-    Port = ?config(port, Config),
-    % TODO: Authorize here?
-    Username = <<"baden">>,
-    {200, Headers, Body} = helper:post(Host, Port, "/1.0/auth", #{
-                                                    grant_type => <<"password">>,
-                                                    username   => Username,
-                                                    password   => <<"111">>
-                                                }
-                                  ),
-    Content_Type = proplists:get_value(<<"content-type">>, Headers),
-    ?assertEqual(<<"application/json; charset=utf-8">>, Content_Type),
+end_per_testcase(_Case, Config) ->
+    GropProps = ?config(tc_group_properties, Config),
+    case ?config(name, GropProps) of
+        auth -> helper:clean(Config);
+        _ -> Config
+    end.
 
-    #{<<"access_token">> := Access_Token} = Body,
-
-    [{token, Access_Token}, {username, Username} | Config].
-
-end_per_group(noauth, Config) ->
-    Config;
-
-end_per_group(auth, Config) ->
-    Config.
-
-test1(Config) ->
-    Host = ?config(host, Config),
-    Port = ?config(port, Config),
+info(Config) ->
     % Out of REST API
-    {200, _, _} = helper:get(Host, Port, "/1.0/info"),
+    {200, _, _} = helper:get(Config, "/info"),
     ok.
 
-test2(Config) ->
-    Host = ?config(host, Config),
-    Port = ?config(port, Config),
-    Username = <<"baden">>,
-    {401, _, _} = helper:get(Host, Port, "/1.0/account"),  % Not authorize jet
-    {200, Headers, Body} = helper:post(Host, Port, "/1.0/auth", #{
-                                                    grant_type => <<"password">>,
-                                                    username   => Username,
-                                                    password   => <<"111">>
-                                                }
-                                  ),
-    Content_Type = proplists:get_value(<<"content-type">>, Headers),
-    ?assertEqual(<<"application/json; charset=utf-8">>, Content_Type),
+register(Config) ->
+    Title = helper:random_string(),
+    Username = helper:random_string(),
+    Password = helper:random_string(),
+    Groupname = helper:random_string(),
+    Grouppassword = helper:random_string(),
 
-    % TODO: simple base64 regexp
-    Cookie = proplists:get_value(<<"set-cookie">>, Headers),
-    % <<"access_token=itpek0KqRHex0YoUPf9flIlUCzkmgea8; Version=1; Expires=Wed, 11-Nov-2015 14:58:30 GMT; Max-Age=31536000; Path=/">>
-    {ok, RE_Cookie} = re:compile("access_token=([0-9A-Za-z+/]+)"),
-    {match, [Token1]} = re:run(Cookie, RE_Cookie, [{capture, [1], list}]),
-    CookieToken = list_to_binary(Token1),
+    % Pure user
+    {200, _, _} = helper:post(Config, "/register", #{
+        grant_type => <<"password">>,
+        title      => Title,
+        username   => Username,
+        password   => Password
+    }),
+    Account = navidb:get(accounts, #{username => Username}),
+    ct:pal("Account = ~p", [Account]),
+    ?assertMatch(
+        #{
+            date     := _,
+            email    := <<>>,
+            groups   := [],
+            id       := _,
+            password := Password,
+            skeys    := [],
+            title    := Title,
+            username := Username
+        },
+        Account
+    ),
+    navidb:remove(accounts, #{username => Username}),
 
-    #{<<"access_token">> := Access_Token} = Body,
+    % With unexisting group
+    Result1 = {404, _, _} = helper:post(Config, "/register", #{
+        grant_type => <<"password">>,
+        title      => Title,
+        username   => Username,
+        password   => Password,
+        groupname  => Groupname,
+        grouppassword  => Grouppassword,
+        newgroup   => false
+    }),
 
-    ?assertEqual(CookieToken, Access_Token),
+    ct:pal("Result1 = ~p", [Result1]),
 
-    {200, _, AccountBody} = helper:get(Host, Port, "/1.0/account", [{<<"authorization">>, <<"Bearer ", Access_Token/binary>>}]),
-    ?assertMatch(#{<<"username">> := Username}, AccountBody),
-    % TODO: Test cookies authorization
     ok.
 
-
-test3(Config) ->
-    Host = ?config(host, Config),
-    Port = ?config(port, Config),
+account(Config) ->
     Username = ?config(username, Config),
-    Token = ?config(token, Config),
+    ct:pal("Username = ~p", [Username]),
+    {200, _, AccountBody} = helper:get(Config, "/account"),
+    ?assertMatch(#{<<"username">> := Username}, AccountBody),
+    ct:pal("AccountBody = ~p", [AccountBody]),
+
+    {200, LogoutHeaders, _} = helper:get(Config, "/logout"),
+    Cookie = proplists:get_value(<<"set-cookie">>, LogoutHeaders),
+    {ok, RE_Cookie} = re:compile("access_token=;"),
+    {match,[_]} = re:run(Cookie, RE_Cookie, []),
+    ok.
+
+account2(Config) ->
+    Username = ?config(username, Config),
+    ct:pal("Username = ~p", [Username]),
+    % Token = ?config(token, Config),
 
     % GET before
     ?assertMatch(
         {200, _, #{<<"username">> := Username}},
-        helper:get(Host, Port, "/1.0/account", {token, Token})
+        helper:get(Config, "/account")
     ),
 
     RandomValue = helper:random_string(),
     % PATCH
-    {200, _, RespBody} = helper:patch(Host, Port, "/1.0/account", {token, Token}, #{<<"foo">> => RandomValue}),
+    {200, _, RespBody} = helper:patch(Config, "/account", #{<<"foo">> => RandomValue}),
     ct:pal("RespBody = ~p", [RespBody]),
 
     % GET after
     ?assertMatch(
         {200, _, #{<<"username">> := Username, <<"foo">> := RandomValue}},
-        helper:get(Host, Port, "/1.0/account", {token, Token})
+        helper:get(Config, "/account")
     ),
-
     ok.
 
-% Private
+password(Config) ->
+    Username = ?config(username, Config),
+    Password = ?config(password, Config),
+    ct:pal("Username = ~p", [Username]),
+    ?assertMatch(
+        {200, _, #{<<"username">> := Username}},
+        helper:get(Config, "/account")
+    ),
+    NewPassword = helper:random_string(),
+    WrongOldPassword = helper:random_string(),
+
+    % Сначала мы ошибемся во вводе старого пароля
+    Payload1 = #{
+        old_password => WrongOldPassword,
+        password     => NewPassword
+    },
+    {422, _, RespBody1} = helper:put(Config, "/account", Payload1),
+    ?assertMatch(
+        #{
+            <<"errors">> := #{
+                <<"resource">> := <<"account">>,
+                <<"field">>    := <<"old_password">>,
+                <<"code">>     := <<"not_match">>
+            }
+        },
+        RespBody1
+    ),
+    % ct:pal("Response1 = ~p", [Response1]),
+
+    % Теперь введем его правильно
+    Payload2 = #{
+        old_password => Password,
+        password     => NewPassword
+    },
+    {200, _, _} = helper:put(Config, "/account", Payload2),
+    ok.

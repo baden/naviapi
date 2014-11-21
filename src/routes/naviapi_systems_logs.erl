@@ -21,7 +21,7 @@ get(Query = #{skey := Skey}, _Options) ->
 
 delete(Query = #{skey := Skey}, _Options = #{username := Username}) ->
     % Удалять может только член группы администраторов
-    case api_auth:is_admin(Username) of
+    case naviapi_rest:is_admin(Username) of
         false ->
             {error, <<"NOADMIN">>};
         true ->

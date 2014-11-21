@@ -25,14 +25,14 @@ init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
 
 options(Req, State) ->
-    Req1 = cowboy_req:set_resp_header(<<"Access-Control-Allow-Methods">>, <<"OPTIONS, POST">>, api_auth:cors(Req)),
+    Req1 = cowboy_req:set_resp_header(<<"Access-Control-Allow-Methods">>, <<"OPTIONS, POST">>, naviapi_rest:cors(Req)),
     {ok, Req1, State}.
 
 rest_init(Req, State) ->
     {ok, Req, State}.
 
 content_types_provided(Req, State) ->
-    Req1 = api_auth:cors(Req),
+    Req1 = naviapi_rest:cors(Req),
     {[
         {{<<"application">>, <<"json">>, []}, process_get},
         {{<<"text">>, <<"html">>, []}, process_get}
@@ -51,14 +51,18 @@ allowed_methods(Req, State) ->
 
 process_get(Req, State) ->
     {ok, _Body, Req2} = cowboy_req:body(Req),
-    {ok, Reply} = cowboy_req:reply(400, [], <<"Bad Request.">>, Req2),
+    Reply = cowboy_req:reply(400, [], <<"Bad Request.">>, Req2),
     {halt, Reply, State}.
 
 process_post_json(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
     Params = jsx:decode(Body),
-    {ok, Reply} = process(Req2, Params, State),
-    {halt, Reply, State}.
+    % % {ok, Reply} = process(Req2, Params, State),
+    % Res1 = process(Req2, Params, State),
+    % io:format("------------~nRes1 = ~p~n------------~n", [Res1]),
+    % % {ok, Reply} = Res1,
+    % Reply = Res1,
+    {halt, process(Req2, Params, State), State}.
 
 process_post(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
@@ -77,7 +81,7 @@ process(Req, Params, _State) ->
     Email           = proplists:get_value(<<"email">>, Params, <<"">>),
     Groupname       = proplists:get_value(<<"groupname">>, Params),
     Grouppassword   = proplists:get_value(<<"grouppassword">>, Params),
-    Newgroup        = proplists:get_value(<<"newgroup">>, Params),
+    Newgroup        = proplists:get_value(<<"newgroup">>, Params, false),
 
     % Для начала проверим, возможно пользователь уже существует
     {Code, Result} = case navidb:get(accounts, {username, Username}) of

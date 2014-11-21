@@ -15,7 +15,7 @@ get(_Query = #{skey := Skey, <<"from">> := From, <<"to">> := To}, _Options) ->
     navidb:get_geos(Skey, binary_to_integer(From), binary_to_integer(To)).
 
 delete(_Query = #{skey := Skey, <<"from">> := From, <<"to">> := To}, _Options = #{username := Username}) ->
-    case api_auth:is_admin(Username) of
+    case naviapi_rest:is_admin(Username) of
         false ->
             lager:warning("Permissions denied for ~p", [Username]),
             {error, <<"NOADMIN">>};

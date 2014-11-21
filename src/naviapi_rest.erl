@@ -30,6 +30,11 @@
         put_json/2
 ]).
 
+-export([
+        cors/1,
+        is_admin/1
+        ]).
+
 % TODO: Перенести в erlnavicc.hrl для возможности доступа из API?
 -type proplist() :: list({term(), term()}).
 
@@ -176,8 +181,10 @@ get_resource(Req, State = #state{params = Params, handler = Handler, options = O
     try Handler:get(Params, Opts#{username => Username}) of
         {ok, Result} ->
             {serialize(Result, Req), Req, State};
+        {N, Result} when is_integer(N) ->
+            {halt, respond(N, Result, Req), State};
         {error, enoent} ->
-            {halt, respond(404, <<"enoent">>, Req), State};
+            {halt, respond(404, undefined, Req), State};
         {error, Reason} ->
             {halt, respond(400, Reason, Req), State};
         error ->
@@ -209,6 +216,8 @@ put_resource(Req, State = #state{method = <<"POST">>, body = Data,
             {true, set_resp_body(Body, Req1), State};
         ok ->
             {true, Req, State};
+        {N, Result} when is_integer(N) ->
+            {halt, respond(N, Result, Req), State};
         {error, eexist} ->
             {halt, respond(409, <<"eexist">>, Req), State};
         {error, Reason} ->
@@ -237,6 +246,8 @@ put_resource(Req, State = #state{method = <<"PUT">>, body = Data,
       {true, Req, State};
     {ok, Body} ->
       {true, set_resp_body(Body, Req), State};
+    {N, Result} when is_integer(N) ->
+        {halt, respond(N, Result, Req), State};
     {error, eexist} ->
       {halt, respond(409, <<"eexist">>, Req), State};
     {error, Reason} ->
@@ -324,6 +335,8 @@ reason(undefined) ->
   reason(<<"unknown">>);
 reason(Reason) when is_list(Reason) ->
   Reason;
+reason(Reason) when is_map(Reason) ->
+  Reason;
 reason(Reason) when is_binary(Reason); is_number(Reason) ->
   reason([{error, Reason}]);
 reason(Reason) when is_atom(Reason) ->
@@ -331,8 +344,13 @@ reason(Reason) when is_atom(Reason) ->
 
 
 respond(Status, Reason, Req) ->
-    {ok, Req2} = cowboy_req:reply(Status, set_resp_body(reason(Reason), Req)),
-    Req2.
+    % io:format("--------------------~nStatus = ~p~nReason = ~p~n-----------------~n", [Status, Reason]),
+    % Reply = cowboy_req:reply(Status, set_resp_body(reason(Reason), Req)),
+    % io:format("---------------~nReply = ~p~n------------------~n", [Reply]),
+    % % {ok, Req2} = cowboy_req:reply(Status, set_resp_body(reason(Reason), Req)),
+    % {ok, Req2} = Reply,
+    % Req2.
+    cowboy_req:reply(Status, set_resp_body(reason(Reason), Req)).
 
 set_resp_body(Body, Req) ->
     % ?INFO("rest_resourse:set_resp_body (~p)", [Body]),
@@ -392,3 +410,7 @@ cors(Req) ->
     cowboy_req:set_resp_header(<<"Access-Control-Allow-Credentials">>, <<"true">>,
     cowboy_req:set_resp_header(<<"Access-Control-Allow-Methods">>, <<"OPTIONS, GET, POST, PUT, PATCH, DELETE">>,
     cowboy_req:set_resp_header(<<"Access-Control-Allow-Headers">>, <<"content-type, if-modified-since, authorization, x-requested-with">>, Req)))).
+
+is_admin(Username) ->
+    #{groups := Groups} = navidb:get(accounts, {username, Username}),
+    lists:member(<<"admin">>, Groups).

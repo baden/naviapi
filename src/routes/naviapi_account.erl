@@ -25,20 +25,22 @@ patch(Entity, _Query, _Options = #{username := Username}) ->
     Result = #{answer => erlang:list_to_binary(io_lib:format("~p", [Res]))},
     {ok, Result}.
 
-% Изменение пароля
-put(#{password := Password, old_password := OldPassword}, _Query, _Options = #{username := Username}) ->
+% @doc Изменение пароля
+put(#{<<"password">> := Password, <<"old_password">> := OldPassword}, _Query, _Options = #{username := Username}) ->
     #{password := CurrentPassword} = navidb:get(accounts, {username, Username}),
-    Result = case CurrentPassword of
+    case CurrentPassword of
         OldPassword ->
             navidb:set(accounts, {username, Username}, #{password => Password}),
-            #{
-                error        => false,
-                answer       => <<"success">>
-            };
+            {ok, #{
+                message      => <<"success">>
+            }};
         _ ->
-            #{
-                error        => true,
-                reason       => <<"Old password not match">>
-            }
-    end,
-    {ok, Result}.
+            {422, #{
+                message => <<"Validation Failed">>,
+                errors  => #{
+                    resource  => <<"account">>,
+                    field     => <<"old_password">>,
+                    code      => <<"not_match">>
+                }
+            }}
+    end.

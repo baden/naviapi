@@ -22,7 +22,7 @@ get(_Query, _Options = #{username := Username}, all) ->
 % Только пользователь группы admin может делать это.
 % Возвращает не обычную запись системы, а мета-запись
 get(_Query, _Options = #{username := Username}, <<"all">>) ->
-    Systems = case api_auth:is_admin(Username) of
+    Systems = case naviapi_rest:is_admin(Username) of
         false ->
             [];
         true ->

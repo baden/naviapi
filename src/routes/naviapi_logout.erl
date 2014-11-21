@@ -22,7 +22,7 @@ init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
 
 options(Req, State) ->
-    Req1 = api_auth:cors(Req),
+    Req1 = naviapi_rest:cors(Req),
     Req2 = cowboy_req:set_resp_header(<<"Access-Control-Allow-Methods">>, <<"OPTIONS, GET">>, Req1),
     {ok, Req2, State}.
 
@@ -30,7 +30,7 @@ rest_init(Req, _Opts) ->
     {ok, Req, undefined_state}.
 
 content_types_provided(Req, State) ->
-    Req1 = api_auth:cors(Req),
+    Req1 = naviapi_rest:cors(Req),
     {[
         {{<<"application">>, <<"json">>, []}, process_get},
         {{<<"text">>, <<"html">>, []}, process_get}
@@ -45,5 +45,5 @@ allowed_methods(Req, State) ->
 process_get(Req, State) ->
     Params = [{logout, true}],
     Req1 = cowboy_req:set_resp_cookie(<<"access_token">>, <<"">>, [{path, <<"/">>}], Req),
-    {ok, Reply} = cowboy_req:reply(200, [], jsxn:encode(Params, [space, {indent, 4}]), Req1),
+    Reply = cowboy_req:reply(200, [], jsxn:encode(Params, [space, {indent, 4}]), Req1),
     {halt, Reply, State}.

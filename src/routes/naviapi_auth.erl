@@ -7,11 +7,6 @@
             post/3
         ]).
 
--export([
-        cors/1,
-        is_admin/1
-        ]).
-
 %%%===================================================================
 %%% Cowboy callbacks
 %%%===================================================================
@@ -87,20 +82,3 @@ to_json_term([{H, {HK, HV}} |  T], Acc) ->
     to_json_term(T, [{H, <<"{",HK/binary,",",HV/binary,"}">>} | Acc]);
 to_json_term([H | T], Acc) ->
     to_json_term(T, [H | Acc]).
-
-%%
-%% Setup CORS
-%%
-cors(Req) ->
-    {ok, Origin} = application:get_env(erlnavicc, origin),
-    NewOrigin = case cowboy_req:header(<<"origin">>, Req) of
-        undefined -> Origin;
-        OriginFromReq -> OriginFromReq
-    end,
-    cowboy_req:set_resp_header(<<"Access-Control-Allow-Origin">>, [NewOrigin],
-    cowboy_req:set_resp_header(<<"Access-Control-Allow-Credentials">>, <<"true">>,
-    cowboy_req:set_resp_header(<<"Access-Control-Allow-Headers">>, <<"content-type, if-modified-since, authorization, x-requested-with">>, Req))).
-
-is_admin(Username) ->
-    #{groups := Groups} = navidb:get(accounts, {username, Username}),
-    lists:member(<<"admin">>, Groups).

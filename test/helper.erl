@@ -2,7 +2,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([start/1, stop/1, auth/1, clean/1, get/2, post/3, patch/3, put/3, delete/2, random_string/0]).
+-export([start/1, stop/1, auth/1, clean/1, tracker/2, get/2, get/3, post/3, patch/3, put/3, delete/2, random_string/0, escape_uri/1]).
 
 -define(API_VERSION, "1.0").
 
@@ -35,6 +35,7 @@ auth(Config) ->
                                                     username   => Username,
                                                     password   => Password
     }),
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
     {200, Headers, Body} = post(Config, "/auth", #{
                                                     grant_type => <<"password">>,
                                                     username   => Username,
@@ -61,6 +62,29 @@ clean(Config) ->
     Username = ?config(username, Config),
     navidb:remove(accounts, #{username => Username}),
     Config.
+
+tracker(create, Config) ->
+    Imei = helper:random_string(),
+    Skey = base64:encode(Imei),
+    System = navidb:get(system, Skey, cached), % Это создаст систему
+    timer:sleep(50), % Это нужно чтобы пулл базы данных успел записать
+    [{imei, Imei}, {skey, Skey}, {system, System} | Config];
+
+tracker(clean, Config) ->
+    Skey = ?config(skey, Config),
+    navidb:remove(systems, {id, Skey}),
+    Config.
+
+get(Config, Url, Params) ->
+    [$&|Query] = lists:flatten(maps:fold(
+        fun(Key, Value, Acc) ->
+            Element = "&" ++ atom_to_list(Key) ++ "=" ++ escape_uri(Value),
+            [Element | Acc]
+        end,
+        [],
+        Params
+    )),
+    get(Config, Url ++ "?" ++ Query).
 
 get(Config, Url) ->
     Host = ?config(host, Config),
@@ -176,3 +200,12 @@ header(Config) ->
 
 random_string() ->
     base64:encode(crypto:rand_bytes(32)).
+
+escape_uri(Data) when is_integer(Data) ->
+    escape_uri(integer_to_list(Data));
+
+escape_uri(Data) when is_binary(Data) ->
+    escape_uri(binary_to_list(Data));
+
+escape_uri(Data) ->
+    edoc_lib:escape_uri(Data).

@@ -5,48 +5,43 @@
 
 -compile(export_all).
 
+-define(REPEAT, 1).
+% -define(REPEAT, 20).
+
 suite() ->
     [{timetrap,{minutes,1}}].
 
 all() -> [
-    {group, noauth}
-    % , {group, auth}
+    {group, noauth},
+    {group, auth},
+    {group, auth_tracker}
 ].
 
 groups() ->
     [
-        {noauth, [parallel, shuffle, {repeat, 100}], [info, register]},
-        % {noauth, [parallel], [info, register]},
-        % Нужно как-то понять, почему не работает parallel
-        % {auth, [parallel, {repeat, 10}], [account, account2, password, account_systems, geos]}
-        {auth, [parallel, shuffle, {repeat, 10}], [account, account2, password, account_systems, geos]}
-
-        % {auth, [{repeat, 10}], [account, account2, password, account_systems, geos]}
+        {noauth, [parallel, shuffle, {repeat, ?REPEAT}], [info, register]},
+        {auth,   [parallel, shuffle, {repeat, ?REPEAT}], [account, account2, password, account_systems]},
+        {auth_tracker, [parallel, shuffle, {repeat, ?REPEAT}], [geos]}
     ].
 
 init_per_suite(Config) ->
     helper:start(Config).
 
 end_per_suite(Config) ->
-    helper:stop(Config).
+    helper:stop(Config),
+    ok.
 
-% init_per_group(noauth, Config) ->
-%     Config;
-%
-% init_per_group(auth, Config) ->
-%     % helper:auth(Config).
-%     Config.
-%
-% end_per_group(noauth, Config) ->
-%     Config;
-%
-% end_per_group(auth, Config) ->
-%     Config.
+init_per_group(_G, Config) ->
+    Config.
+
+end_per_group(_G, Config) ->
+    Config.
 
 init_per_testcase(_Case, Config) ->
     GropProps = ?config(tc_group_properties, Config),
     case ?config(name, GropProps) of
         auth -> helper:auth(Config);
+        auth_tracker -> helper:tracker(create, helper:auth(Config));
         _ -> Config
     end.
 
@@ -54,6 +49,7 @@ end_per_testcase(_Case, Config) ->
     GropProps = ?config(tc_group_properties, Config),
     case ?config(name, GropProps) of
         auth -> helper:clean(Config);
+        auth_tracker -> helper:tracker(clean, helper:clean(Config));
         _ -> Config
     end.
 
@@ -78,6 +74,7 @@ register(Config) ->
         password   => Password,
         email      => Email
     }),
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
     Account = navidb:get(accounts, #{username => Username}),
     ?assertMatch(
         #{
@@ -115,20 +112,11 @@ register(Config) ->
         grouppassword  => Grouppassword,
         newgroup   => true
     }),
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
 
     Username2 = helper:random_string(),
 
     % Попытка создать группу, которая уже существует
-    % {409, _, #{<<"errors">> := [Error1]}} = helper:post(Config, "/register", #{
-    %     grant_type => <<"password">>,
-    %     title      => Title,
-    %     username   => Username2,
-    %     password   => Password,
-    %     groupname  => Groupname,
-    %     grouppassword  => Grouppassword,
-    %     newgroup   => true
-    % }),
-    % #{<<"resource">> := <<"Group">>, <<"code">>     := <<"exist">>} = Error1,
     ?assertMatch(
         {409, _, #{
             <<"errors">> := [#{
@@ -176,6 +164,7 @@ register(Config) ->
         grouppassword  => Grouppassword,
         newgroup   => false
     }),
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
 
     % Попытка повторно создать пользователя
     ?assertMatch(
@@ -206,7 +195,6 @@ register(Config) ->
     navidb:remove(accounts, {username, Username}),
     navidb:remove(accounts, {username, Username2}),
     navidb:remove(groups, {groupname, Groupname}),
-
     ok.
 
 account(Config) ->
@@ -232,6 +220,7 @@ account2(Config) ->
     RandomValue = helper:random_string(),
     % PATCH
     {200, _, _} = helper:patch(Config, "/account", #{<<"foo">> => RandomValue}),
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
 
     % GET after
     ?assertMatch(
@@ -273,6 +262,8 @@ password(Config) ->
         password     => NewPassword
     },
     {200, _, _} = helper:put(Config, "/account", Payload2),
+    % timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
+    % TODO: тут бы попробовать залогиниться под новым паролем
     ok.
 
 account_systems(Config) ->
@@ -295,6 +286,7 @@ account_systems(Config) ->
 
     Skey = base64:encode(Imei1),
     #{title := Title1, date := Date1} = navidb:get(system, Skey, cached), % Это создаст систему
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
     % ct:pal("System1 = ~p", [System1]),
 
     % В этот раз должно быть все хорошо
@@ -306,6 +298,7 @@ account_systems(Config) ->
         #{<<"id">> := Skey, <<"imei">> := Imei1, <<"title">> := Title1, <<"date">> := Date1},
         System2
     ),
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
     % Попробуем повторно добавить трекер
     ?assertMatch(
         {200, _, [#{
@@ -314,11 +307,22 @@ account_systems(Config) ->
         }]},
         helper:post(Config, "/account/systems", #{<<"cmd">> => <<"add">>, imeis => [Imei1]})
     ),
+    timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
     % Удалим трекер
     {204, _, _} = helper:delete(Config, "/account/systems/" ++ binary_to_list(Skey)),
     navidb:remove(systems, {id, Skey}),
     ok.
 
-geos(_Config) ->
+geos(Config) ->
+    % Imei = ?config(imei, Config),
+    Skey = ?config(skey, Config),
 
+
+    ok = navidb_gpsdb:save(Skey, 10, <<"fake-data-01">>),
+    timer:sleep(10), % Это нужно чтобы пулл базы данных успел записать (скорее всего не нужно, так как данные кешируются в памяти)
+
+    %
+    {200, Headers, <<"fake-data-01">>} = helper:get(Config, "/geos/" ++ helper:escape_uri(Skey), #{from => 9, to => 11}),
+    <<"application/octet-stream; charset=binary">> = proplists:get_value(<<"content-type">>, Headers),
+    % ct:pal("Result = ~p", [Result]),
     ok.

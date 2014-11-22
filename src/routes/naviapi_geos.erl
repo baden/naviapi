@@ -12,7 +12,10 @@ init(Req, Opts) ->
     {naviapi_rest, Req, Opts#{auth => true}}.  % Для доступа к ресурсу требуется авторизация
 
 get(_Query = #{skey := Skey, <<"from">> := From, <<"to">> := To}, _Options) ->
-    navidb:get_geos(Skey, binary_to_integer(From), binary_to_integer(To)).
+    % TODO: Тут ответ должен быть бинарным (arraybuffer)
+    % Content-Type = 'application/octet-stream; charset=binary'
+    {ok, Data} = navidb:get_geos(Skey, binary_to_integer(From), binary_to_integer(To)),
+    {binary, Data}.
 
 delete(_Query = #{skey := Skey, <<"from">> := From, <<"to">> := To}, _Options = #{username := Username}) ->
     case naviapi_rest:is_admin(Username) of

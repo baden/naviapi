@@ -184,6 +184,8 @@ get_resource(Req, State = #state{params = Params, handler = Handler, options = O
     try Handler:get(Params, Opts#{username => Username}) of
         {ok, Result} ->
             {serialize(Result, Req), Req, State};
+        {binary, Data} ->
+            {Data, cowboy_req:set_resp_header(<<"content-type">>, <<"application/octet-stream; charset=binary">>, Req), State};
         {N, Result} when is_integer(N) ->
             {halt, respond(N, Result, Req), State};
         {error, enoent} ->
@@ -198,14 +200,12 @@ get_resource(Req, State = #state{params = Params, handler = Handler, options = O
             BasePath = cowboy_req:path(Req),
             {halt, cowboy_req:set_resp_header(<<"location">>,
                 [BasePath, $/, Location], Req), State}
-    catch Class:Reason ->
-        lager:error(
-            "** API handler ~p terminating in get/3~n"
-            "   for the reason ~p:~p~n** State was ~p~n"
-            "** Stacktrace: ~p~n~n",
-            [Handler, Class, Reason, State, erlang:get_stacktrace()]),
-            io:format("Backtrace = ~p~n", [erlang:get_stacktrace()]),
-        {halt, respond(500, Reason, Req), State}
+    catch
+        error:function_clause ->
+            {halt, respond(400, enoent, Req), State};
+        Class:Reason ->
+            io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
+            {halt, respond(500, Reason, Req), State}
     end.
 
 put_resource(Req, State = #state{method = <<"POST">>, body = Data,
@@ -232,14 +232,12 @@ put_resource(Req, State = #state{method = <<"POST">>, body = Data,
         {goto, Location} ->
             BasePath = cowboy_req:path(Req),
             {{true, [BasePath, $/, Location]}, Req, State}
-    catch Class:Reason ->
-        lager:error(
-            "**** API handler ~p terminating in post/3~n"
-            "     for the reason ~p:~p~n** State was ~p~n"
-            "     Stacktrace: ~p~n~n",
-            [Handler, Class, Reason, State, erlang:get_stacktrace()]),
-            io:format("Backtrace = ~p~n", [erlang:get_stacktrace()]),
-        {halt, respond(500, Reason, Req), State}
+    catch
+        error:function_clause ->
+            {halt, respond(400, enoent, Req), State};
+        Class:Reason ->
+            io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
+            {halt, respond(500, Reason, Req), State}
   end;
 
 put_resource(Req, State = #state{method = <<"PUT">>, body = Data,
@@ -257,14 +255,12 @@ put_resource(Req, State = #state{method = <<"PUT">>, body = Data,
       {halt, respond(400, Reason, Req), State};
     error ->
       {halt, respond(400, undefined, Req), State}
-  catch Class:Reason ->
-    error_logger:error_msg(
-      "** API handler ~p terminating in put/3~n"
-      "   for the reason ~p:~p~n** State was ~p~n"
-      "** Stacktrace: ~p~n~n",
-      [Handler, Class, Reason, State, erlang:get_stacktrace()]),
-      io:format("Backtrace = ~p~n", [erlang:get_stacktrace()]),
-    {halt, respond(500, Reason, Req), State}
+    catch
+        error:function_clause ->
+            {halt, respond(400, enoent, Req), State};
+        Class:Reason ->
+            io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
+            {halt, respond(500, Reason, Req), State}
   end;
 
 put_resource(Req, State = #state{method = <<"PATCH">>, body = Data,
@@ -280,14 +276,12 @@ put_resource(Req, State = #state{method = <<"PATCH">>, body = Data,
       {halt, respond(400, Reason, Req), State};
     error ->
       {halt, respond(400, undefined, Req), State}
-  catch Class:Reason ->
-    error_logger:error_msg(
-      "** API handler ~p terminating in patch/3~n"
-      "   for the reason ~p:~p~n** State was ~p~n"
-      "** Stacktrace: ~p~n~n",
-      [Handler, Class, Reason, State, erlang:get_stacktrace()]),
-      io:format("Backtrace = ~p~n", [erlang:get_stacktrace()]),
-    {halt, respond(500, Reason, Req), State}
+    catch
+        error:function_clause ->
+            {halt, respond(400, enoent, Req), State};
+        Class:Reason ->
+            io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
+            {halt, respond(500, Reason, Req), State}
   end.
 
 
@@ -312,13 +306,12 @@ delete_resource(Req, State = #state{
       {halt, respond(404, <<"enoent">>, Req), State};
     {error, Reason} ->
       {halt, respond(400, Reason, Req), State}
-  catch Class:Reason ->
-    error_logger:error_msg(
-      "** API handler ~p terminating in delete/3~n"
-      "   for the reason ~p:~p~n** State was ~p~n"
-      "** Stacktrace: ~p~n~n",
-      [Handler, Class, Reason, State, erlang:get_stacktrace()]),
-    {halt, respond(500, Reason, Req), State}
+    catch
+        error:function_clause ->
+            {halt, respond(400, enoent, Req), State};
+        Class:Reason ->
+            io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
+            {halt, respond(500, Reason, Req), State}
   end.
 
 %%

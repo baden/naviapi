@@ -46,4 +46,4 @@ process_get(Req, State) ->
     Params = [{logout, true}],
     Req1 = cowboy_req:set_resp_cookie(<<"access_token">>, <<"">>, [{path, <<"/">>}], Req),
     Reply = cowboy_req:reply(200, [], jsxn:encode(Params, [space, {indent, 4}]), Req1),
-    {halt, Reply, State}.
+    {stop, Reply, State}.

@@ -20,7 +20,8 @@ DEPS = lager cowboy oauth2 jsx jsxn navidb
 TEST_DEPS = gun
 # dep_ct_helper = git https://github.com/extend/ct_helper.git master
 
-dep_cowboy = git git://github.com/ninenines/cowboy.git 2.0.0-pre.1
+#dep_cowboy = git git://github.com/ninenines/cowboy.git 2.0.0-pre.1
+dep_cowboy = git git://github.com/baden/cowboy.git master
 dep_jsx = git git://github.com/baden/jsx.git develop
 dep_jsxn = git git://github.com/talentdeficit/jsxn.git v2.1.1
 # dep_folsom = git https://github.com/boundary/folsom.git master

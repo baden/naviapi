@@ -187,25 +187,25 @@ get_resource(Req, State = #state{params = Params, handler = Handler, options = O
         {binary, Data} ->
             {Data, cowboy_req:set_resp_header(<<"content-type">>, <<"application/octet-stream; charset=binary">>, Req), State};
         {N, Result} when is_integer(N) ->
-            {halt, respond(N, Result, Req), State};
+            {stop, respond(N, Result, Req), State};
         {error, enoent} ->
-            {halt, respond(404, undefined, Req), State};
+            {stop, respond(404, undefined, Req), State};
         {error, Reason} ->
-            {halt, respond(400, Reason, Req), State};
+            {stop, respond(400, Reason, Req), State};
         error ->
-            {halt, respond(400, undefined, Req), State};
+            {stop, respond(400, undefined, Req), State};
         {goto, Location = << $/, _/binary >> } ->
-            {halt, cowboy_req:set_resp_header(<<"location">>, Location, Req), State};
+            {stop, cowboy_req:set_resp_header(<<"location">>, Location, Req), State};
         {goto, Location} ->
             BasePath = cowboy_req:path(Req),
-            {halt, cowboy_req:set_resp_header(<<"location">>,
+            {stop, cowboy_req:set_resp_header(<<"location">>,
                 [BasePath, $/, Location], Req), State}
     catch
         error:function_clause ->
-            {halt, respond(400, enoent, Req), State};
+            {stop, respond(400, enoent, Req), State};
         Class:Reason ->
             io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
-            {halt, respond(500, Reason, Req), State}
+            {stop, respond(500, Reason, Req), State}
     end.
 
 put_resource(Req, State = #state{method = <<"POST">>, body = Data,
@@ -220,13 +220,13 @@ put_resource(Req, State = #state{method = <<"POST">>, body = Data,
         ok ->
             {true, Req, State};
         {N, Result} when is_integer(N) ->
-            {halt, respond(N, Result, Req), State};
+            {stop, respond(N, Result, Req), State};
         {error, eexist} ->
-            {halt, respond(409, <<"eexist">>, Req), State};
+            {stop, respond(409, <<"eexist">>, Req), State};
         {error, Reason} ->
-            {halt, respond(400, Reason, Req), State};
+            {stop, respond(400, Reason, Req), State};
         error ->
-            {halt, respond(400, undefined, Req), State};
+            {stop, respond(400, undefined, Req), State};
         {goto, Location = << $/, _/binary >> } ->
             {{true, Location}, Req, State};
         {goto, Location} ->
@@ -234,10 +234,10 @@ put_resource(Req, State = #state{method = <<"POST">>, body = Data,
             {{true, [BasePath, $/, Location]}, Req, State}
     catch
         error:function_clause ->
-            {halt, respond(400, enoent, Req), State};
+            {stop, respond(400, enoent, Req), State};
         Class:Reason ->
             io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
-            {halt, respond(500, Reason, Req), State}
+            {stop, respond(500, Reason, Req), State}
   end;
 
 put_resource(Req, State = #state{method = <<"PUT">>, body = Data,
@@ -248,19 +248,19 @@ put_resource(Req, State = #state{method = <<"PUT">>, body = Data,
     {ok, Body} ->
       {true, set_resp_body(Body, Req), State};
     {N, Result} when is_integer(N) ->
-        {halt, respond(N, Result, Req), State};
+        {stop, respond(N, Result, Req), State};
     {error, eexist} ->
-      {halt, respond(409, <<"eexist">>, Req), State};
+      {stop, respond(409, <<"eexist">>, Req), State};
     {error, Reason} ->
-      {halt, respond(400, Reason, Req), State};
+      {stop, respond(400, Reason, Req), State};
     error ->
-      {halt, respond(400, undefined, Req), State}
+      {stop, respond(400, undefined, Req), State}
     catch
         error:function_clause ->
-            {halt, respond(400, enoent, Req), State};
+            {stop, respond(400, enoent, Req), State};
         Class:Reason ->
             io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
-            {halt, respond(500, Reason, Req), State}
+            {stop, respond(500, Reason, Req), State}
   end;
 
 put_resource(Req, State = #state{method = <<"PATCH">>, body = Data,
@@ -271,17 +271,17 @@ put_resource(Req, State = #state{method = <<"PATCH">>, body = Data,
     {ok, Body} ->
       {true, set_resp_body(Body, Req), State};
     {error, enoent} ->
-      {halt, respond(404, <<"enoent">>, Req), State};
+      {stop, respond(404, <<"enoent">>, Req), State};
     {error, Reason} ->
-      {halt, respond(400, Reason, Req), State};
+      {stop, respond(400, Reason, Req), State};
     error ->
-      {halt, respond(400, undefined, Req), State}
+      {stop, respond(400, undefined, Req), State}
     catch
         error:function_clause ->
-            {halt, respond(400, enoent, Req), State};
+            {stop, respond(400, enoent, Req), State};
         Class:Reason ->
             io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
-            {halt, respond(500, Reason, Req), State}
+            {stop, respond(500, Reason, Req), State}
   end.
 
 
@@ -291,7 +291,7 @@ put_resource(Req, State = #state{method = <<"PATCH">>, body = Data,
 %% It should start deleting the resource and return.
 %% - {true, Req, State} --> 204 No Content, unless delete_completed/2 defined
 %% - {X =/= true, Req, State} --> 500 Internal Server Error
-%% - {halt, Req, State} --> no further processing
+%% - {stop, Req, State} --> no further processing
 %%
 delete_resource(Req, State = #state{
     params = Params, handler = Handler, options = Opts, username = Username}) ->
@@ -301,24 +301,24 @@ delete_resource(Req, State = #state{
     accepted ->
       {true, Req, State#state{completed = false}};
     error ->
-      {halt, respond(400, undefined, Req), State};
+      {stop, respond(400, undefined, Req), State};
     {error, enoent} ->
-      {halt, respond(404, <<"enoent">>, Req), State};
+      {stop, respond(404, <<"enoent">>, Req), State};
     {error, Reason} ->
-      {halt, respond(400, Reason, Req), State}
+      {stop, respond(400, Reason, Req), State}
     catch
         error:function_clause ->
-            {halt, respond(400, enoent, Req), State};
+            {stop, respond(400, enoent, Req), State};
         Class:Reason ->
             io:format("[~p:~p] Backtrace = ~p~n", [Class, Reason, erlang:get_stacktrace()]),
-            {halt, respond(500, Reason, Req), State}
+            {stop, respond(500, Reason, Req), State}
   end.
 
 %%
 %% Indicates whether the resource has been deleted yet.
 %% - {true, Req, State} --> go ahead with 200/204
 %% - {false, Req, State} --> 202 Accepted
-%% - {halt, Req, State} --> no further processing
+%% - {stop, Req, State} --> no further processing
 %%
 delete_completed(Req, State = #state{completed = Completed}) ->
   {Completed, Req, State}.

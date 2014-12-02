@@ -52,7 +52,7 @@ allowed_methods(Req, State) ->
 process_get(Req, State) ->
     {ok, _Body, Req2} = cowboy_req:body(Req),
     Reply = cowboy_req:reply(400, [], <<"Bad Request.">>, Req2),
-    {halt, Reply, State}.
+    {stop, Reply, State}.
 
 process_post_json(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
@@ -62,13 +62,13 @@ process_post_json(Req, State) ->
     % io:format("------------~nRes1 = ~p~n------------~n", [Res1]),
     % % {ok, Reply} = Res1,
     % Reply = Res1,
-    {halt, process(Req2, Params, State), State}.
+    {stop, process(Req2, Params, State), State}.
 
 process_post(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
     Params = decode_form(Body),
     {ok, Reply} = process(Req2, Params, State),
-    {halt, Reply, State}.
+    {stop, Reply, State}.
 
 % TODO: maps
 process(Req, Params, _State) ->

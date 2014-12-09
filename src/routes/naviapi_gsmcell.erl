@@ -77,7 +77,8 @@ wait({OpenCellID, Google, Yandex, MozLocation}) when OpenCellID == undefined ore
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
-                    reason => list_to_binary(io_lib:format("~p", [Reason]))
+                    reason => list_to_binary(io_lib:format("~p", [Reason])),
+                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
                 }
             },
             wait({ErrorResult, Google, Yandex, MozLocation});
@@ -85,7 +86,8 @@ wait({OpenCellID, Google, Yandex, MozLocation}) when OpenCellID == undefined ore
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
-                    reason => list_to_binary(io_lib:format("~p", [Reason]))
+                    reason => list_to_binary(io_lib:format("~p", [Reason])),
+                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
                 }
             },
             wait({OpenCellID, ErrorResult, Yandex, MozLocation});
@@ -93,7 +95,8 @@ wait({OpenCellID, Google, Yandex, MozLocation}) when OpenCellID == undefined ore
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
-                    reason => list_to_binary(io_lib:format("~p", [Reason]))
+                    reason => list_to_binary(io_lib:format("~p", [Reason])),
+                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
                 }
             },
             wait({OpenCellID, Google, ErrorResult, MozLocation});
@@ -101,7 +104,8 @@ wait({OpenCellID, Google, Yandex, MozLocation}) when OpenCellID == undefined ore
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
-                    reason => list_to_binary(io_lib:format("~p", [Reason]))
+                    reason => list_to_binary(io_lib:format("~p", [Reason])),
+                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
                 }
             },
             wait({OpenCellID, Google, Yandex, ErrorResult})
@@ -155,8 +159,9 @@ openCellID(MCC, MNC, LAC, CID) ->
     Result = case re:run(Html, "err\\s+info=\"([^\"]+)\"\\s+code=\"([^\"]+)\"", [{capture, all_but_first, list}]) of
         {match, [ErrInfo, Code]} ->
             #{
-                error_info => ErrInfo,
-                code       => Code
+                error_info => list_to_binary(ErrInfo),
+                code       => list_to_integer(Code),
+                raw        => list_to_binary(Html)
             };
         _ ->
             % <?xml version=\"1.0\" encoding=\"UTF-8\"?>\n
@@ -308,6 +313,12 @@ mozLocation(_MCC, _MNC, _LAC, _CID) ->
     }.
 
 -ifdef(MozLocation).
+
+% Several links:
+% https://github.com/clochix/FxStumbler/blob/fb49753f51451b334a0858ee9a990c31da50ba0f/js/stumbler.js
+% https://github.com/kolonist/bscoords/blob/master/lib/bscoords.coffee
+%
+
 mozLocationU(MCC, MNC, LAC, CID) ->
     NetType = gsm,
     % ct:pal("mozLocation", []),

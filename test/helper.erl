@@ -91,7 +91,7 @@ get(Config, Url) ->
     Port = ?config(port, Config),
     {ok, ConnPid} = gun:open(Host, Port, [{retry, 0}, {type, tcp}]),
     Ref = gun:get(ConnPid, "/" ++ ?API_VERSION ++ Url, header(Config)),
-    Response = case gun:await(ConnPid, Ref) of
+    Response = case gun:await(ConnPid, Ref, 10000) of
         {response, nofin, Status, RespHeaders} ->
             {ok, Body} = gun:await_body(ConnPid, Ref),
             case proplists:get_value(<<"content-type">>, RespHeaders, undefined) of
@@ -101,7 +101,11 @@ get(Config, Url) ->
                     {Status, RespHeaders, Body}
             end;
         {response, fin, Status, RespHeaders} ->
-            {Status, RespHeaders, <<"">>}
+            {Status, RespHeaders, <<"">>};
+        Any ->
+            ct:pal("helper:get got ~p", [Any]),
+            ct:pal("StackTrace = ~p", [erlang:get_stacktrace()]),
+            error(case_clause)
     end,
     gun:close(ConnPid),
     Response.

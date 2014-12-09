@@ -42,7 +42,9 @@ process_password_grant(Params = #{<<"username">> := Username, <<"password">> := 
             end,
 
             Auth = oauth2:authorize_password(Username, Password, Scope, []),
-            issue_token(Auth)
+            issue_token(Auth);
+        _ ->  % Обычно этого не бывает, но если нет записи password, то вызов крашится
+          emit_response({error, access_denied})
     end.
 
 

@@ -19,7 +19,7 @@ all() -> [
 
 groups() ->
     [
-        {noauth, [parallel, shuffle, {repeat, ?REPEAT}], [info, register]},
+        {noauth, [parallel, shuffle, {repeat, ?REPEAT}], [info, register, gsmcell]},
         {auth,   [parallel, shuffle, {repeat, ?REPEAT}], [account, account2, password, account_systems]},
         {auth_tracker, [parallel, shuffle, {repeat, ?REPEAT}], [geos]}
     ].
@@ -325,4 +325,13 @@ geos(Config) ->
     {200, Headers, <<"fake-data-01">>} = helper:get(Config, "/geos/" ++ helper:escape_uri(Skey), #{from => 9, to => 11}),
     <<"application/octet-stream; charset=binary">> = proplists:get_value(<<"content-type">>, Headers),
     % ct:pal("Result = ~p", [Result]),
+    ok.
+
+gsmcell(Config) ->
+    MCC = 255,
+    MNC = 3,
+    LAC = 16#b7e8,
+    CID = 16#24F5,
+    {200, _, Response} = helper:get(Config, "/gsmcell", #{mcc => MCC, mnc => MNC, lac => LAC, cid => CID}),
+    ct:log("Response = ~p", [Response]),
     ok.

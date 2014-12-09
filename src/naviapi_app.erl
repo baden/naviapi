@@ -53,7 +53,8 @@ start_phase(listen, _Type, _Args) ->
             {"/" ++ ?APIVERSION ++ "/params/[:skey]",           naviapi_systems_params, Opts},
             {"/" ++ ?APIVERSION ++ "/systems/[:skey]/logs[/:logid]", naviapi_systems_logs, Opts},
             {"/" ++ ?APIVERSION ++ "/geos/[:skey]/hours",   naviapi_geos_hours, Opts},
-            {"/" ++ ?APIVERSION ++ "/geos/[:skey]",         naviapi_geos, Opts}
+            {"/" ++ ?APIVERSION ++ "/geos/[:skey]",         naviapi_geos, Opts},
+            {"/" ++ ?APIVERSION ++ "/gsmcell",         naviapi_gsmcell, Opts}
         ]}
     ],
 

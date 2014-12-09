@@ -73,39 +73,39 @@ wait({OpenCellID, Google, Yandex, MozLocation}) when OpenCellID == undefined ore
             wait({OpenCellID, Google, Result, MozLocation});
         {done, {mozLocation, Result}} ->
             wait({OpenCellID, Google, Yandex, Result});
-        {error, {openCellID, Class, Reason}} ->
+        {error, {openCellID, Class, Reason, StackTrace}} ->
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
                     reason => list_to_binary(io_lib:format("~p", [Reason])),
-                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
+                    stack => list_to_binary(io_lib:format("~p", [StackTrace]))
                 }
             },
             wait({ErrorResult, Google, Yandex, MozLocation});
-        {error, {google, Class, Reason}} ->
+        {error, {google, Class, Reason, StackTrace}} ->
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
                     reason => list_to_binary(io_lib:format("~p", [Reason])),
-                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
+                    stack => list_to_binary(io_lib:format("~p", [StackTrace]))
                 }
             },
             wait({OpenCellID, ErrorResult, Yandex, MozLocation});
-        {error, {yandex, Class, Reason}} ->
+        {error, {yandex, Class, Reason, StackTrace}} ->
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
                     reason => list_to_binary(io_lib:format("~p", [Reason])),
-                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
+                    stack => list_to_binary(io_lib:format("~p", [StackTrace]))
                 }
             },
             wait({OpenCellID, Google, ErrorResult, MozLocation});
-        {error, {mozLocation, Class, Reason}} ->
+        {error, {mozLocation, Class, Reason, StackTrace}} ->
             ErrorResult = #{
                 error => #{
                     class => list_to_binary(io_lib:format("~p", [Class])),
                     reason => list_to_binary(io_lib:format("~p", [Reason])),
-                    stack => list_to_binary(io_lib:format("~p", [erlang:get_stacktrace()]))
+                    stack => list_to_binary(io_lib:format("~p", [StackTrace]))
                 }
             },
             wait({OpenCellID, Google, Yandex, ErrorResult})
@@ -127,7 +127,7 @@ client(Self_PID, Method, MCC, MNC, LAC, CID) ->
     catch
         Class:Reason ->
             % ct:pal("Error client ~p Result = ~p:~p", [Method, Class, Reason]),
-            Self_PID ! {error, {Method, Class, Reason}}
+            Self_PID ! {error, {Method, Class, Reason, erlang:get_stacktrace()}}
     end.
 
 client(openCellID, MCC, MNC, LAC, CID) -> openCellID(MCC, MNC, LAC, CID);

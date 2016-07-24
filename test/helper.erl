@@ -89,7 +89,7 @@ get(Config, Url, Params) ->
 get(Config, Url) ->
     Host = ?config(host, Config),
     Port = ?config(port, Config),
-    {ok, ConnPid} = gun:open(Host, Port, [{retry, 0}, {type, tcp}]),
+    {ok, ConnPid} = gun:open(Host, Port, #{retry => 0}),
     Ref = gun:get(ConnPid, "/" ++ ?API_VERSION ++ Url, header(Config)),
     Response = case gun:await(ConnPid, Ref, 10000) of
         {response, nofin, Status, RespHeaders} ->
@@ -113,7 +113,7 @@ get(Config, Url) ->
 post(Config, Url, Payload) ->
     Host = ?config(host, Config),
     Port = ?config(port, Config),
-    {ok, ConnPid} = gun:open(Host, Port, [{retry, 0}, {type, tcp}]),
+    {ok, ConnPid} = gun:open(Host, Port, #{retry => 0}),
     PostHeaders = [{<<"content-type">>, <<"application/json; charset=utf-8">>} | header(Config)],
     Data = jsxn:encode(Payload),
     Ref = gun:post(ConnPid, "/" ++ ?API_VERSION ++ Url, PostHeaders, Data),
@@ -135,7 +135,7 @@ post(Config, Url, Payload) ->
 patch(Config, Url, Payload) ->
     Host = ?config(host, Config),
     Port = ?config(port, Config),
-    {ok, ConnPid} = gun:open(Host, Port, [{retry, 0}, {type, tcp}]),
+    {ok, ConnPid} = gun:open(Host, Port, #{retry => 0}),
     PostHeaders = [{<<"content-type">>, <<"application/json; charset=utf-8">>} | header(Config)],
     Data = jsxn:encode(Payload),
     Ref = gun:patch(ConnPid, "/" ++ ?API_VERSION ++ Url, PostHeaders, Data),
@@ -157,7 +157,7 @@ patch(Config, Url, Payload) ->
 put(Config, Url, Payload) ->
     Host = ?config(host, Config),
     Port = ?config(port, Config),
-    {ok, ConnPid} = gun:open(Host, Port, [{retry, 0}, {type, tcp}]),
+    {ok, ConnPid} = gun:open(Host, Port, #{retry => 0}),
     PostHeaders = [{<<"content-type">>, <<"application/json; charset=utf-8">>} | header(Config)],
     Data = jsxn:encode(Payload),
     Ref = gun:put(ConnPid, "/" ++ ?API_VERSION ++ Url, PostHeaders, Data),
@@ -179,7 +179,7 @@ put(Config, Url, Payload) ->
 delete(Config, Url) ->
     Host = ?config(host, Config),
     Port = ?config(port, Config),
-    {ok, ConnPid} = gun:open(Host, Port, [{retry, 0}, {type, tcp}]),
+    {ok, ConnPid} = gun:open(Host, Port, #{retry => 0}),
     Ref = gun:delete(ConnPid, "/" ++ ?API_VERSION ++ Url, header(Config)),
     Response = case gun:await(ConnPid, Ref) of
         {response, nofin, Status, RespHeaders} ->

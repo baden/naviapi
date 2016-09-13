@@ -16,3 +16,4 @@ Mnesia*
 .erlang.mk.packages.*
 .erlang.mk/
 *.d
+xrefr

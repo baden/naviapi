@@ -21,13 +21,20 @@
             process_post_json/2
         ]).
 
+-spec init(Req, State) -> {cowboy_rest, Req, State}.
 init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
 
+-spec options(any(), any()) -> {ok, any(), any()}.
 options(Req, State) ->
-    Req1 = cowboy_req:set_resp_header(<<"Access-Control-Allow-Methods">>, <<"OPTIONS, POST">>, naviapi_rest:cors(Req)),
+    Req1 = cowboy_req:set_resp_header(
+        <<"Access-Control-Allow-Methods">>,
+        <<"OPTIONS, POST">>,
+        naviapi_rest:cors(Req)
+    ),
     {ok, Req1, State}.
 
+-spec rest_init(any(), any()) -> {ok, any(), any()}.
 rest_init(Req, State) ->
     {ok, Req, State}.
 
@@ -89,7 +96,7 @@ process(Req, Params, _State) ->
             % Теперь если определено поле Groupname, то создадим группу
             case Groupname of
                 undefined ->    % Не создавать группу
-                    Salt = random:uniform(trunc(math:pow(2,64))),
+                    Salt = rand:uniform(trunc(math:pow(2,64))),
                     Document = #{
                         id       => base64:encode(<<Username/binary, $:, Salt:64>>),
                         username => Username,
@@ -136,7 +143,7 @@ process(Req, Params, _State) ->
                                 ]]}
                             ]};
                         _Group ->
-                            Salt = random:uniform(trunc(math:pow(2,64))),
+                            Salt = rand:uniform(trunc(math:pow(2,64))),
                             Document = #{
                                 id       => base64:encode(<<Username/binary, $:, Salt:64>>),
                                 username => Username,

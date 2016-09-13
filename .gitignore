@@ -1,5 +1,9 @@
 .eunit
 deps
+/doc/*.html
+/doc/edoc-info
+/doc/erlang.png
+/doc/stylesheet.css
 *.o
 *.beam
 *.plt
@@ -17,3 +21,4 @@ Mnesia*
 .erlang.mk/
 *.d
 xrefr
+elvis

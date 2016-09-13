@@ -35,6 +35,8 @@
         is_admin/1
         ]).
 
+-callback allowed(binary(), binary()) -> true|false.
+
 % TODO: Перенести в erlnavicc.hrl для возможности доступа из API?
 -type proplist() :: list({term(), term()}).
 
@@ -185,7 +187,11 @@ get_resource(Req, State = #state{params = Params, handler = Handler, options = O
         {ok, Result} ->
             {serialize(Result, Req), Req, State};
         {binary, Data} ->
-            {Data, cowboy_req:set_resp_header(<<"content-type">>, <<"application/octet-stream; charset=binary">>, Req), State};
+            {
+                Data,
+                cowboy_req:set_resp_header(<<"content-type">>, <<"application/octet-stream; charset=binary">>, Req),
+                State
+            };
         {N, Result} when is_integer(N) ->
             {stop, respond(N, Result, Req), State};
         {error, enoent} ->
@@ -403,9 +409,16 @@ cors(Req) ->
         OriginFromReq -> OriginFromReq
     end,
     cowboy_req:set_resp_header(<<"Access-Control-Allow-Origin">>, [NewOrigin],
-    cowboy_req:set_resp_header(<<"Access-Control-Allow-Credentials">>, <<"true">>,
-    cowboy_req:set_resp_header(<<"Access-Control-Allow-Methods">>, <<"OPTIONS, GET, POST, PUT, PATCH, DELETE">>,
-    cowboy_req:set_resp_header(<<"Access-Control-Allow-Headers">>, <<"content-type, if-modified-since, authorization, x-requested-with">>, Req)))).
+        cowboy_req:set_resp_header(<<"Access-Control-Allow-Credentials">>, <<"true">>,
+            cowboy_req:set_resp_header(<<"Access-Control-Allow-Methods">>, <<"OPTIONS, GET, POST, PUT, PATCH, DELETE">>,
+                cowboy_req:set_resp_header(
+                    <<"Access-Control-Allow-Headers">>,
+                    <<"content-type, if-modified-since, authorization, x-requested-with">>,
+                    Req
+                )
+            )
+        )
+    ).
 
 is_admin(Username) ->
     #{groups := Groups} = navidb:get(accounts, {username, Username}),

@@ -6,11 +6,11 @@
 %%% API
 -export([
          start/0
-         ,stop/0
-         ,add_user/2
-         ,delete_user/1
-         ,add_client/2, add_client/3
-         ,delete_client/1
+         , stop/0
+         , add_user/2
+         , delete_user/1
+         , add_client/2, add_client/3
+         , delete_client/1
         ]).
 
 %%% Behavior API
@@ -122,8 +122,8 @@ get_client_identity(ClientId, _) ->
             {error, notfound}
     end.
 
-associate_access_code(AccessCode, Context, _AppContext) ->
-    associate_access_token(AccessCode, Context, _AppContext).
+associate_access_code(AccessCode, Context, AppContext) ->
+    associate_access_token(AccessCode, Context, AppContext).
 
 associate_refresh_token(RefreshToken, Context, _) ->
     put(?REFRESH_TOKEN_TABLE, RefreshToken, Context).
@@ -132,11 +132,11 @@ associate_access_token(AccessToken, Context, _) ->
     put(?ACCESS_TOKEN_TABLE, AccessToken, Context).
 
 
-resolve_access_code(AccessCode, _AppContext) ->
-    resolve_access_token(AccessCode, _AppContext).
+resolve_access_code(AccessCode, AppContext) ->
+    resolve_access_token(AccessCode, AppContext).
 
-resolve_refresh_token(RefreshToken, _AppContext) ->
-    resolve_access_token(RefreshToken, _AppContext).
+resolve_refresh_token(RefreshToken, AppContext) ->
+    resolve_access_token(RefreshToken, AppContext).
 
 resolve_access_token(AccessToken, _) ->
     %% The case trickery is just here to make sure that
@@ -149,8 +149,8 @@ resolve_access_token(AccessToken, _) ->
             Error
     end.
 
-revoke_access_code(AccessCode, _AppContext) ->
-    revoke_access_token(AccessCode, _AppContext).
+revoke_access_code(AccessCode, AppContext) ->
+    revoke_access_token(AccessCode, AppContext).
 
 revoke_access_token(AccessToken, _) ->
     delete(?ACCESS_TOKEN_TABLE, AccessToken),

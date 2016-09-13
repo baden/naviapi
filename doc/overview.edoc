@@ -1,0 +1,30 @@
+@title NaviApi Application
+@author Denis Batrak <baden.i.ua@gmail.com>
+  [http://batrak.net/]
+@copyright 2012-2016 Denis Batrak (MIT License)
+
+@doc NaviApi is a library to be dropped into any other Erlang project,
+to be used to create endpoint for tracker's API pipe.
+
+The source code can be obtained from <a href="https://github.com/baden/naviapi">the github repo</a>.
+
+Included modules are:
+
+<dl>
+    <dt>{@link naviapi}</dt>
+    <dd>
+        Main module, contains basic functionality.
+    </dd>
+
+    <dt>{@link naviapi_auth}</dt>
+    <dd>
+        /auth endpoint
+    </dd>
+
+</dl>
+
+<p>
+    TBD...
+</p>
+
+@end

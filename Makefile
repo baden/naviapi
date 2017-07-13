@@ -34,7 +34,7 @@ dep_jsx = git git://github.com/baden/jsx.git develop
 dep_jsxn = git git://github.com/talentdeficit/jsxn.git v2.1.1
 # dep_folsom = git https://github.com/boundary/folsom.git master
 dep_oauth2 = git https://github.com/kivra/oauth2.git 0.4.1
-dep_navidb = git git://github.com/baden/navidb.git master
+dep_navidb = git git://github.com/baden/navidb.git refresh2017
 
 BUILD_DEPS = elvis_mk
 DEP_PLUGINS = elvis_mk

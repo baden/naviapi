@@ -24,10 +24,10 @@ delete(_Query = #{skey := Skey, <<"from">> := From, <<"to">> := To}, _Options = 
             {error, <<"NOADMIN">>};
         true ->
             Selector = #{
-                'system' => Skey,
-                'hour' => #{
-                    '$gte' => binary_to_integer(From),
-                    '$lte' => binary_to_integer(To)
+                <<"system">> => Skey,
+                <<"hour">> => #{
+                    <<"$gte">> => binary_to_integer(From),
+                    <<"$lte">> => binary_to_integer(To)
                 }
             },
             navidb:remove(gps, Selector, {flush, {gps, Skey}}),

@@ -78,14 +78,14 @@ register(Config) ->
     Account = navidb:get(accounts, #{username => Username}),
     ?assertMatch(
         #{
-            date     := _,
-            email    := Email,
-            groups   := [],
             id       := _,
-            password := Password,
-            skeys    := [],
-            title    := Username,
-            username := Username
+            <<"date">>     := _,
+            <<"email">>    := Email,
+            <<"groups">>   := [],
+            <<"password">> := Password,
+            <<"skeys">>    := [],
+            <<"title">>    := Username,
+            <<"username">> := Username
         },
         Account
     ),
@@ -187,7 +187,7 @@ register(Config) ->
 
     ?assertMatch(
         #{
-            members := [Username, Username2]
+            <<"members">> := [Username, Username2]
         },
         navidb:get(groups, {groupname, Groupname})
     ),
@@ -285,7 +285,10 @@ account_systems(Config) ->
     ),
 
     Skey = base64:encode(Imei1),
-    #{title := Title1, date := Date1} = navidb:get(system, Skey, cached), % Это создаст систему
+    #{
+        <<"title">> := Title1,
+        <<"date">> := Date1
+    } = navidb:get(system, Skey, cached), % Это создаст систему
     timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
     % ct:pal("System1 = ~p", [System1]),
 
@@ -295,7 +298,12 @@ account_systems(Config) ->
     % ct:pal("System2 = ~p", [System2]),
     % Проверим парочку полей
     ?assertMatch(
-        #{<<"id">> := Skey, <<"imei">> := Imei1, <<"title">> := Title1, <<"date">> := Date1},
+        #{
+            <<"id">> := Skey,
+            <<"imei">> := Imei1,
+            <<"title">> := Title1,
+            <<"date">> := Date1
+        },
         System2
     ),
     timer:sleep(100), % Это нужно чтобы пулл базы данных успел записать
@@ -317,7 +325,6 @@ geos(Config) ->
     % Imei = ?config(imei, Config),
     Skey = ?config(skey, Config),
 
-
     ok = navidb_gpsdb:save(Skey, 10, <<"fake-data-01">>),
     timer:sleep(10), % Это нужно чтобы пулл базы данных успел записать (скорее всего не нужно, так как данные кешируются в памяти)
 
@@ -333,5 +340,5 @@ gsmcell(Config) ->
     LAC = 16#b7e8,
     CID = 16#24F5,
     {200, _, Response} = helper:get(Config, "/gsmcell", #{mcc => MCC, mnc => MNC, lac => LAC, cid => CID}),
-    ct:log("Response = ~p", [Response]),
+    % ct:log("Response = ~p", [Response]),
     ok.

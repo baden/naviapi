@@ -27,10 +27,10 @@ patch(Entity, _Query, _Options = #{username := Username}) ->
 
 % @doc Изменение пароля
 put(#{<<"password">> := Password, <<"old_password">> := OldPassword}, _Query, _Options = #{username := Username}) ->
-    #{password := CurrentPassword} = navidb:get(accounts, {username, Username}),
+    #{<<"password">> := CurrentPassword} = navidb:get(accounts, {username, Username}),
     case CurrentPassword of
         OldPassword ->
-            navidb:set(accounts, {username, Username}, #{password => Password}),
+            navidb:set(accounts, {username, Username}, #{<<"password">> => Password}),
             {ok, #{
                 message      => <<"success">>
             }};

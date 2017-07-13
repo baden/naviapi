@@ -99,13 +99,13 @@ process(Req, Params, _State) ->
                     Salt = rand:uniform(trunc(math:pow(2,64))),
                     Document = #{
                         id       => base64:encode(<<Username/binary, $:, Salt:64>>),
-                        username => Username,
-                        password => Password,
-                        title    => Title,
-                        email    => Email,
-                        date     => unixtime(),
-                        skeys    => [],
-                        groups   => []
+                        <<"username">> => Username,
+                        <<"password">> => Password,
+                        <<"title">>    => Title,
+                        <<"email">>    => Email,
+                        <<"date">>     => unixtime(),
+                        <<"skeys">>    => [],
+                        <<"groups">>   => []
                     },
                     navidb:insert(accounts, Document),
                     {200, [
@@ -146,18 +146,18 @@ process(Req, Params, _State) ->
                             Salt = rand:uniform(trunc(math:pow(2,64))),
                             Document = #{
                                 id       => base64:encode(<<Username/binary, $:, Salt:64>>),
-                                username => Username,
-                                password => Password,
-                                title    => Title,
-                                email    => Email,
-                                date     => unixtime(),
-                                skeys    => [],
-                                groups   => [Groupname]
+                                <<"username">> => Username,
+                                <<"password">> => Password,
+                                <<"title">>    => Title,
+                                <<"email">>    => Email,
+                                <<"date">>     => unixtime(),
+                                <<"skeys">>    => [],
+                                <<"groups">>   => [Groupname]
                             },
                             navidb:insert(accounts, Document),
 
                             % А также добавим пользователя в группу
-                            navidb:update(groups, {groupname, Groupname}, #{'$push' => #{'members' => Username}}),
+                            navidb:update(groups, {groupname, Groupname}, #{<<"$push">> => #{<<"members">> => Username}}),
                             % $addToSet ?
 
                             {200, [
@@ -188,7 +188,7 @@ getgroup(Groupname, Grouppassword, false) ->
     case navidb:get(groups, {groupname, Groupname}) of
         #{error := no_entry} ->    % Такой группы нет вовсе
             {error, nogroup};
-        #{grouppassword := Grouppassword} = Group ->                % Группа есть, проверим проверочное слово
+        #{<<"grouppassword">> := Grouppassword} = Group ->                % Группа есть, проверим проверочное слово
             Group;
         _ ->
             {error, wrongpassword}
@@ -200,9 +200,9 @@ getgroup(Groupname, Grouppassword, true) ->
     case navidb:get(groups, {groupname, Groupname}) of
         #{error := no_entry} -> % Все хорошо, такой группы нет, можно создать запись
             Document = #{
-                groupname     => Groupname,
-                grouppassword => Grouppassword,
-                date          => unixtime()
+                <<"groupname">>     => Groupname,
+                <<"grouppassword">> => Grouppassword,
+                <<"date">>          => unixtime()
             },
             navidb:insert(groups, Document);
         _ ->  % Такая группа уже есть

@@ -28,7 +28,7 @@ get(_Query = #{skey := Skey}, _Options) ->
 post(Entity, _Query = #{skey := Skey, sub := <<"queue">>}, _Options) ->
         % TODO: Это не должно быть тут. Это нужно перенести в rest_resource
         Document = maps:from_list(Entity),
-        navidb:update(params, Skey, #{'$set' => #{'queue' => Document}}),
+        navidb:update(params, Skey, #{<<"$set">> => #{<<"queue">> => Document}}),
         ok.
 
 % Патч разрешен только для одного поля за раз
@@ -48,5 +48,5 @@ patch(_Entity, _Query, _Options) ->
     {error, enoent}.
 
 delete(_Query = #{skey := Skey}, _Options) ->
-    navidb:update(params, {'_id', Skey}, #{'$unset' => #{queue => <<"">>}}),
+    navidb:update(params, {'_id', Skey}, #{<<"$unset">> => #{<<"queue">> => <<"">>}}),
     ok.

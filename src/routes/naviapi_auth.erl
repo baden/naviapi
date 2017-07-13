@@ -33,7 +33,7 @@ process_password_grant(Params = #{<<"username">> := Username, <<"password">> := 
         #{error := no_entry} ->
             % access_denied
             emit_response({error, access_denied});
-        #{password := DbPassword} ->
+        #{<<"password">> := DbPassword} ->
             % Возможно пользователь уже есть в памяти
             case oauth2_ets_backend:authenticate_username_password(Username, Password, []) of
                 {error, notfound} ->            % Нет, пользователя еще нет, подгрузим его

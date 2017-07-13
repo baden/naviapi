@@ -203,7 +203,7 @@ header(Config) ->
     end.
 
 random_string() ->
-    base64:encode(crypto:rand_bytes(32)).
+    base64:encode(crypto:strong_rand_bytes(32)).
 
 escape_uri(Data) when is_integer(Data) ->
     escape_uri(integer_to_list(Data));

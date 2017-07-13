@@ -30,7 +30,7 @@ delete(Query = #{skey := Skey}, _Options = #{username := Username}) ->
 
             case maps:get_value(logid, Query, undefined) of
                 undefined ->
-                    navidb:remove(logs, #{'system' => Skey, 'dt' => #{'$gte' => From, '$lte' => To}}),
+                    navidb:remove(logs, #{<<"system">> => Skey, <<"dt">> => #{<<"$gte">> => From, <<"$lte">> => To}}),
                     ok;
 
                 Lkey ->

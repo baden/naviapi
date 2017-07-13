@@ -16,14 +16,14 @@ init(Req, Opts) ->
 % Получить информацию по всем наблюдаемым системам
 % TODO: Не самое удачное решение повторно загружать запись авторизованного пользователя. Но пока сойдет.
 get(_Query, _Options = #{username := Username}) ->
-    #{skeys := Skeys} = navidb:get(accounts, {username, Username}),
+    #{<<"skeys">> := Skeys} = navidb:get(accounts, {username, Username}),
     Systems = navidb:get(systems, Skeys),
     {ok, Systems}.
 
 % TODO: Этот метод стоит убрать из API. Это как-то совсем не по REST-канонам
 % Добавить системы в список наблюдения
 post(#{<<"cmd">> := <<"add">>, <<"imeis">> := Imeis}, _Query, _Options = #{username := Username}) ->
-    #{skeys := Skeys} = navidb:get(accounts, {username, Username}),
+    #{<<"skeys">> := Skeys} = navidb:get(accounts, {username, Username}),
 
     Result = lists:foldl(
         fun(Imei, Res) ->
@@ -37,14 +37,15 @@ post(#{<<"cmd">> := <<"add">>, <<"imeis">> := Imeis}, _Query, _Options = #{usern
                     };
                 false ->
                     % Получим запись о трекере
-                    case navidb:get(systems, #{'_id' => Skey}) of
+                    % case navidb:get(systems, #{'_id' => Skey}) of
+                    case navidb:get(systems, Skey) of
                         #{error := no_entry} ->    % Записи о системе еще нет.
                             #{
                                 result => <<"notfound">>,
                                 system => null
                             };
                         System ->
-                            navidb:update(accounts, {username, Username}, {'$addToSet', {skeys, Skey}}),
+                            navidb:update(accounts, {username, Username}, #{<<"$addToSet">> => {skeys, Skey}}),
                             #{
                                 result => <<"added">>,
                                 system => System

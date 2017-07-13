@@ -22,17 +22,17 @@ init(Req, Opts) ->
 get(_Query = #{skey := Skey}, _Options) ->
     case navidb:get(params, {'_id', Skey}) of
         #{error := no_entry} ->    % Записи о параметрах
-            {ok, #{data => #{}, id => Skey}}; % Вернем пустые данные
-        Document = #{data := Data} ->
+            {ok, #{<<"data">> => #{}, id => Skey}}; % Вернем пустые данные
+        Document = #{<<"data">> := Data} ->
             % Я лоханулся. Требуется отфильтровать двойные кавычки
             Filtered = maps:fold(
-                fun(Name, #{type := Type, value := Value, default := Default}, Acc) ->
+                fun(Name, #{<<"type">> := Type, <<"value">> := Value, <<"default">> := Default}, Acc) ->
                     maps:put(
                         type_to_repr(Name),
                         #{
-                            type    => Type,
-                            value   => remquotes(Value),
-                            default => remquotes(Default)
+                            <<"type">>    => Type,
+                            <<"value">>   => remquotes(Value),
+                            <<"default">> => remquotes(Default)
                         },
                         Acc
                     )
@@ -41,7 +41,7 @@ get(_Query = #{skey := Skey}, _Options) ->
                 Data
             ),
             % Document2 = #{data => Filtered, queue => Queue, id => Id},
-            Document2 = Document#{data := Filtered},
+            Document2 = Document#{<<"data">> := Filtered},
 
             {ok, Document2}
     end.
@@ -55,12 +55,12 @@ type_to_repr(Label) ->
 % sub
 
 post(Document, _Query = #{skey := Skey, sub := <<"queue">>}, _Options) ->
-    navidb:update(params, Skey, #{'$set' => #{queue => Document}}),
+    navidb:update(params, Skey, #{<<"$set">> => #{<<"queue">> => Document}}),
     ok.
 
 % Патч разрешен только для одного поля за раз
 patch(#{<<"queue">> := Queue}, _Query = #{skey := Skey}, _Options) ->
-    Res2 = navidb:set(params, Skey, #{queue => Queue}),
+    Res2 = navidb:set(params, Skey, #{<<"queue">> => Queue}),
 
     % TODO: Вообще-то тут скорее нужна очередь команд или set
     Command = <<"CONFIGUP\r\n">>,
@@ -73,5 +73,5 @@ patch(_Entity, _Query, _Options) ->
     {error, enoent}.
 
 delete(#{skey := Skey}, _Options) ->
-    navidb:update(params, {'_id', Skey}, #{'$unset' => #{queue => <<"">>}}),
+    navidb:update(params, {'_id', Skey}, #{<<"$unset">> => #{<<"queue">> => <<"">>}}),
     ok.

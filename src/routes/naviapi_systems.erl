@@ -15,7 +15,7 @@ get(Query, Options) ->
     get(Query, Options, maps:get(skey, Query, all)).
 
 get(_Query, _Options = #{username := Username}, all) ->
-    #{skeys := Skeys} = navidb:get(accounts, {username, Username}),
+    #{<<"skeys">> := Skeys} = navidb:get(accounts, {username, Username}),
     Result = navidb:get(systems, Skeys),
     {ok, Result};
 
